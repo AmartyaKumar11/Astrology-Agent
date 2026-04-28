@@ -1,4 +1,5 @@
 // North-Indian style Kundli chart drawn with SVG + absolutely-positioned planet labels.
+import { formatPlanetHindiEnglish } from '../utils/astrologyTerms.js';
 
 const HOUSE_POSITIONS = {
   1:  { x: 50,   y: 25 },
@@ -26,6 +27,32 @@ const PLANET_COLOR = {
   Ra: '#7C3AED',
   Ke: '#7C3AED',
   Lg: '#4F46E5',
+};
+
+const PLANET_ABBR_TO_NAME = {
+  Su: 'Sun',
+  Mo: 'Moon',
+  Ma: 'Mars',
+  Me: 'Mercury',
+  Ju: 'Jupiter',
+  Ve: 'Venus',
+  Sa: 'Saturn',
+  Ra: 'Rahu',
+  Ke: 'Ketu',
+  Lg: 'Lagna',
+};
+
+const PLANET_ABBR_TO_COMPACT_HINDI = {
+  Su: 'सूर्य',
+  Mo: 'चंद्र',
+  Ma: 'मंगल',
+  Me: 'बुध',
+  Ju: 'बृह',
+  Ve: 'शुक्र',
+  Sa: 'शनि',
+  Ra: 'राहु',
+  Ke: 'केतु',
+  Lg: 'लग्न',
 };
 
 export default function KundliChart({ chart, size = 320, lagnaSign }) {
@@ -83,18 +110,20 @@ export default function KundliChart({ chart, size = 320, lagnaSign }) {
               {planets.map((p, i) => (
                 <span
                   key={i}
+                  title={PLANET_ABBR_TO_NAME[p] ? formatPlanetHindiEnglish(PLANET_ABBR_TO_NAME[p]) : p}
                   style={{
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: 700,
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     color: PLANET_COLOR[p] || '#111827',
+                    lineHeight: 1.1,
                     padding: '1px 4px',
                     background: '#F9FAFB',
                     border: '1px solid ' + (p === 'Lg' ? 'var(--indigo-100)' : '#E5E7EB'),
                     borderRadius: 4,
                   }}
                 >
-                  {p}
+                  {PLANET_ABBR_TO_COMPACT_HINDI[p] || p}
                 </span>
               ))}
             </div>

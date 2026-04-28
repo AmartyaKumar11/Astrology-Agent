@@ -14,7 +14,7 @@ import { ICheck, ICircleUser, IDoc, IFlag, IShield, ITerminal } from '../compone
 import KundliChart from '../components/KundliChart.jsx';
 import JatakaReportsSection from '../components/JatakaReportsSection.jsx';
 import { consultationService } from '../services/consultationService.js';
-import { formatSignHindiEnglish } from '../utils/astrologyTerms.js';
+import { formatPlanetHindiEnglish, formatSignHindiEnglish } from '../utils/astrologyTerms.js';
 import {
   listContainer,
   listItem,
@@ -343,7 +343,7 @@ export default function Consultation() {
                   ].map(([a, n]) => (
                     <span key={a}>
                       {a}
-                      <span style={{ color: '#9CA3AF' }}>·{n}</span>
+                      <span style={{ color: '#9CA3AF' }}>·{formatPlanetHindiEnglish(n)}</span>
                     </span>
                   ))}
                 </div>
@@ -375,7 +375,7 @@ export default function Consultation() {
                       Mahadasha
                     </div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--indigo-700)' }}>
-                      {c.activeMahadasha}
+                      {formatPlanetHindiEnglish(c.activeMahadasha)}
                     </div>
                   </div>
                   <div style={{ flex: 1 }}>
@@ -391,7 +391,7 @@ export default function Consultation() {
                       Antardasha
                     </div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--indigo-700)' }}>
-                      {c.activeAntardasha}
+                      {formatPlanetHindiEnglish(c.activeAntardasha)}
                     </div>
                   </div>
                   <div style={{ flex: 1.2 }}>
