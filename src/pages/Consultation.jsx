@@ -7,13 +7,14 @@ import {
   Badge,
   Button,
   Card,
-  ConfidenceBar,
   PageHeader,
   StatusBadge,
 } from '../components/primitives.jsx';
 import { ICheck, ICircleUser, IDoc, IFlag, IShield, ITerminal } from '../components/icons.jsx';
 import KundliChart from '../components/KundliChart.jsx';
 import JatakaReportsSection from '../components/JatakaReportsSection.jsx';
+import { consultationService } from '../services/consultationService.js';
+import { formatSignHindiEnglish } from '../utils/astrologyTerms.js';
 import {
   listContainer,
   listItem,
@@ -24,17 +25,108 @@ import {
 export default function Consultation() {
   const { id } = useParams();
   const nav = useNavigate();
-  const base = MOCK_DATA.find((c) => c.id === id) || MOCK_DATA[0];
+  const fallback = MOCK_DATA.find((c) => c.id === id) || MOCK_DATA[0];
+  const [base, setBase] = useState(fallback);
+  const [loading, setLoading] = useState(true);
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  const [c, setC] = useState(() => JSON.parse(JSON.stringify(base)));
   useEffect(() => {
-    setC(JSON.parse(JSON.stringify(base)));
+    let mounted = true;
+    const mapHousePlacements = (housePlacements) => {
+      const out = {};
+      Object.entries(housePlacements || {}).forEach(([house, planets]) => {
+        const n = Number(String(house).replace('H', ''));
+        if (!Number.isNaN(n)) out[n] = Array.isArray(planets) ? planets : [];
+      });
+      return out;
+    };
+
+    consultationService
+      .getById(id)
+      .then((res) => {
+        if (!mounted) return;
+        if (!res) return;
+        setBase((prev) => ({
+          ...prev,
+          id: res.consultation_id || res.id || prev.id,
+          name: res.client?.name || res.client_name || prev.name,
+          email: res.client?.email || res.client_email || prev.email,
+          status: res.status || prev.status,
+          receivedAt: res.received_at || prev.receivedAt,
+          reportReady: !!res.report_ready,
+          concerns: res.concerns || prev.concerns,
+          dob: res.birth_data?.dob || prev.dob,
+          tob: res.birth_data?.tob || prev.tob,
+          pob: res.birth_data?.pob || prev.pob,
+          coordinates: res.birth_data?.coordinates || prev.coordinates,
+          timezone: res.birth_data?.timezone || prev.timezone,
+          ayanamsa: res.birth_data?.ayanamsa || prev.ayanamsa,
+          lagna: res.birth_data?.lagna || prev.lagna,
+          lagnaDisplay: res.chart?.lagna_display || formatSignHindiEnglish(res.birth_data?.lagna || prev.lagna),
+          rasiChart: mapHousePlacements(res.chart?.house_placements) || prev.rasiChart,
+          activeMahadasha: res.chart?.active_mahadasha || prev.activeMahadasha,
+          activeAntardasha: res.chart?.active_antardasha || prev.activeAntardasha,
+          dashaEnds: res.chart?.dasha_ends || prev.dashaEnds,
+          yogas: res.chart?.yogas || prev.yogas,
+          doshas: res.chart?.doshas || prev.doshas,
+          interpretations: Array.isArray(res.interpretations)
+            ? Object.fromEntries(
+                res.interpretations.map((it) => [
+                  (it.concern || 'general').toLowerCase(),
+                  {
+                    insight: it.insight || '',
+                    remedy: it.remedy || prev?.remedy || '',
+                    confidence: Math.round((it.confidence_score ?? 0.7) * 100),
+                    confidence_score: Number(it.confidence_score ?? 0.7),
+                    planet: it.planet_indicator || '',
+                    flagged: it.hil_status === 'pending',
+                    flagReason: it.flag_reason || it.hil_notes || '',
+                    hilStatus: (it.hil_status || '').toUpperCase(),
+                    hilNote: it.hil_notes || '',
+                  },
+                ])
+              )
+            : prev.interpretations,
+          agentLog: Array.isArray(res.events)
+            ? res.events.map((e) => ({
+                time: new Date(e.created_at || Date.now()).toLocaleTimeString([], { hour12: false }),
+                type: (e.event_type || 'INFO').toUpperCase(),
+                message: e.message || '',
+              }))
+            : prev.agentLog,
+        }));
+        setUsingFallback(false);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setBase(fallback);
+        setUsingFallback(true);
+        setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, [id]);
 
+  const [c, setC] = useState(() => JSON.parse(JSON.stringify(fallback)));
+  useEffect(() => {
+    if (!base) return;
+    setC(JSON.parse(JSON.stringify(base)));
+  }, [base]);
+
   const [logShown, setLogShown] = useState(() => {
-    if (base.status === 'COMPLETE') return base.agentLog.length;
-    return Math.max(1, Math.min(2, base.agentLog.length));
+    if (fallback.status === 'COMPLETE') return fallback.agentLog.length;
+    return Math.max(1, Math.min(2, fallback.agentLog.length));
   });
+  useEffect(() => {
+    if (!base) return;
+    if (base.status === 'COMPLETE') {
+      setLogShown(base.agentLog.length);
+      return;
+    }
+    setLogShown(Math.max(1, Math.min(2, base.agentLog.length)));
+  }, [base]);
 
   useEffect(() => {
     if (logShown >= c.agentLog.length) return;
@@ -58,6 +150,14 @@ export default function Consultation() {
     return () => clearTimeout(t);
   }, [toastVisible]);
 
+  if (loading) {
+    return (
+      <motion.div {...pageTransition} style={{ minHeight: '100vh', background: 'var(--bg)', padding: 28 }}>
+        <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading consultation...</div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div {...pageTransition} style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 60 }}>
       <PageHeader
@@ -74,6 +174,12 @@ export default function Consultation() {
           </div>
         }
       />
+
+      {usingFallback && (
+        <div style={{ padding: '10px 28px 0', fontSize: 12, color: 'var(--amber-700)' }}>
+          API unavailable, showing local fallback data.
+        </div>
+      )}
 
       <div
         style={{
@@ -202,7 +308,7 @@ export default function Consultation() {
               <Fact label="TOB" v={c.tob} />
               <Fact label="POB" v={c.pob} />
               <Fact label="Ayanamsa" v={c.ayanamsa} />
-              <Fact label="Lagna" v={c.lagna} accent />
+              <Fact label="Lagna" v={c.lagnaDisplay || c.lagna} accent />
             </div>
           </Card>
 
@@ -211,7 +317,7 @@ export default function Consultation() {
               <Card style={{ padding: 16 }}>
                 <Section title="Rasi Chart" />
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-                  <KundliChart chart={c.rasiChart} size={320} lagnaSign={c.lagna} />
+                  <KundliChart chart={c.rasiChart} size={320} lagnaSign={c.lagnaDisplay || c.lagna} />
                 </div>
                 <div
                   style={{
@@ -501,6 +607,13 @@ function LogEntry({ entry }) {
   );
 }
 
+function confidenceBadge(score) {
+  const normalized = score > 1 ? score / 100 : score;
+  if (normalized >= 0.8) return { label: 'EXCELLENT', tone: 'emerald' };
+  if (normalized >= 0.5) return { label: 'GOOD', tone: 'amber' };
+  return { label: 'OKAY', tone: 'rose' };
+}
+
 function InterpretationCard({ domain, v }) {
   const titleMap = {
     career: 'Career',
@@ -542,6 +655,8 @@ function InterpretationCard({ domain, v }) {
         CLEARED
       </Badge>
     );
+
+  const cBadge = confidenceBadge(v.confidence_score ?? v.confidence);
 
   return (
     <motion.div
@@ -599,9 +714,30 @@ function InterpretationCard({ domain, v }) {
           <b style={{ color: '#374151' }}>Jyotishi note:</b> {v.hilNote}
         </div>
       )}
-      <div style={{ marginTop: 10 }}>
-        <ConfidenceBar value={v.confidence} />
+      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Badge tone={cBadge.tone}>{cBadge.label}</Badge>
+        <span
+          title={`Exact confidence: ${Math.round((v.confidence_score ?? (v.confidence / 100)) * 100)}%`}
+          style={{ fontSize: 11, color: 'var(--muted)' }}
+        >
+          confidence
+        </span>
       </div>
+      {v.remedy && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: '8px 10px',
+            background: 'var(--amber-50)',
+            border: '1px solid var(--amber-100)',
+            borderRadius: 8,
+            fontSize: 12,
+            color: '#78350f',
+          }}
+        >
+          <b>Remedy:</b> {v.remedy}
+        </div>
+      )}
     </motion.div>
   );
 }

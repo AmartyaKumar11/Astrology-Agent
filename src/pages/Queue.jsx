@@ -13,6 +13,7 @@ import {
 } from '../components/primitives.jsx';
 import { IArrowRight, IDoc, IX } from '../components/icons.jsx';
 import KundliChart from '../components/KundliChart.jsx';
+import { consultationService } from '../services/consultationService.js';
 import {
   listContainer,
   listItem,
@@ -25,8 +26,50 @@ export default function Queue() {
   const nav = useNavigate();
   const [filter, setFilter] = useState('ALL'); // ALL | PROCESSING | HIL | COMPLETE
   const [modalId, setModalId] = useState(null);
+  const [consultations, setConsultations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  const counts = MOCK_DATA.reduce(
+  useEffect(() => {
+    let mounted = true;
+    consultationService
+      .list()
+      .then((res) => {
+        if (!mounted) return;
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        if (!rows.length) {
+          setConsultations([]);
+          setLoading(false);
+          return;
+        }
+        const mapped = rows.map((r) => ({
+          ...(MOCK_DATA.find((x) => x.id === (r.consultation_id || r.id)) || {}),
+          id: r.consultation_id || r.id,
+          name: r.client_name || r.name || 'Unknown',
+          email: r.client_email || r.email || '',
+          receivedAt: r.received_at || r.receivedAt || '',
+          status: r.status || 'PROCESSING',
+          overallConfidence: Math.round((r.overall_confidence ?? 0.75) * 100),
+          processingTime: r.processing_time || r.processingTime || '00:00:00',
+          concerns: r.concerns || [],
+          interpretations: r.interpretations || {},
+        }));
+        setConsultations(mapped);
+        setUsingFallback(false);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setConsultations(MOCK_DATA);
+        setUsingFallback(true);
+        setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const counts = consultations.reduce(
     (a, c) => {
       a.total++;
       if (c.status === 'PROCESSING' || c.status === 'INTERPRETING') a.processing++;
@@ -37,7 +80,7 @@ export default function Queue() {
     { total: 0, processing: 0, hil: 0, complete: 0 }
   );
 
-  const filtered = MOCK_DATA.filter((c) => {
+  const filtered = consultations.filter((c) => {
     if (filter === 'ALL') return true;
     if (filter === 'PROCESSING') return c.status === 'PROCESSING' || c.status === 'INTERPRETING';
     if (filter === 'HIL') return c.status === 'HIL_PENDING';
@@ -57,6 +100,15 @@ export default function Queue() {
       <PageHeader title="Jataka Queue" subtitle={subtitleMap[filter]} right={<AgentChip />} />
 
       <div style={{ padding: '24px 28px', maxWidth: 1440, margin: '0 auto' }}>
+        {usingFallback && (
+          <div style={{ fontSize: 12, color: 'var(--amber-700)', marginBottom: 10 }}>
+            API unavailable, showing local fallback data.
+          </div>
+        )}
+        {loading ? (
+          <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading queue...</div>
+        ) : (
+          <>
         <motion.div
           variants={listContainer}
           initial="hidden"
@@ -136,12 +188,15 @@ export default function Queue() {
             </div>
           )}
         </Card>
+        </>
+        )}
       </div>
 
       <AnimatePresence>
         {modalId && (
           <ReportModal
             id={modalId}
+            consultations={consultations}
             onClose={() => setModalId(null)}
             onOpenFull={() => {
               const id = modalId;
@@ -296,8 +351,8 @@ function QueueRow({ c, last, onOpen, onViewReport, completedView }) {
   );
 }
 
-function ReportModal({ id, onClose, onOpenFull }) {
-  const c = MOCK_DATA.find((x) => x.id === id);
+function ReportModal({ id, consultations, onClose, onOpenFull }) {
+  const c = consultations.find((x) => x.id === id);
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onClose();

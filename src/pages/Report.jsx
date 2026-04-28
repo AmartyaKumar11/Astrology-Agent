@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MOCK_DATA } from '../data.js';
@@ -5,11 +6,52 @@ import { Badge, Button } from '../components/primitives.jsx';
 import { IArrowLeft, IHome, IPrint } from '../components/icons.jsx';
 import KundliChart from '../components/KundliChart.jsx';
 import { listContainer, listItem, pageTransition } from '../components/motion.js';
+import { reportService } from '../services/reportService.js';
 
 export default function Report() {
   const { id } = useParams();
   const nav = useNavigate();
-  const c = MOCK_DATA.find((x) => x.id === id) || MOCK_DATA[0];
+  const fallback = MOCK_DATA.find((x) => x.id === id) || MOCK_DATA[0];
+  const [c, setC] = useState(fallback);
+  const [loading, setLoading] = useState(true);
+  const [usingFallback, setUsingFallback] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    reportService
+      .getByConsultationId(id)
+      .then((res) => {
+        if (!mounted || !res?.content) {
+          setLoading(false);
+          return;
+        }
+        setC((prev) => ({
+          ...prev,
+          ...(res.content || {}),
+          name: res.content.client_name || prev.name,
+          reportReady: true,
+        }));
+        setUsingFallback(false);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setC(fallback);
+        setUsingFallback(true);
+        setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <motion.div {...pageTransition} style={{ minHeight: '100vh', background: '#F3F4F6', padding: 28 }}>
+        <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading report...</div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div {...pageTransition} style={{ minHeight: '100vh', background: '#F3F4F6', padding: '28px 0 80px' }}>
@@ -49,6 +91,11 @@ export default function Report() {
           border: '1px solid var(--border)',
         }}
       >
+        {usingFallback && (
+          <div style={{ marginBottom: 10, fontSize: 12, color: 'var(--amber-700)' }}>
+            API unavailable, showing local fallback data.
+          </div>
+        )}
         <div style={{ textAlign: 'center', paddingBottom: 24, borderBottom: '2px solid var(--indigo)' }}>
           <h1
             style={{

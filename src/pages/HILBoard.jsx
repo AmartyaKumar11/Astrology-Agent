@@ -1,22 +1,72 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MOCK_DATA } from '../data.js';
 import { AgentChip, Button, ConfidenceBar, PageHeader } from '../components/primitives.jsx';
 import { IArrowRight, IClock } from '../components/icons.jsx';
 import { listContainer, listItem, pageTransition } from '../components/motion.js';
+import { consultationService } from '../services/consultationService.js';
 
 export default function HILBoard() {
   const nav = useNavigate();
+  const [consultations, setConsultations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  const pending = MOCK_DATA.filter((c) => c.status === 'HIL_PENDING');
-  const review = MOCK_DATA.filter((c) => c.status === 'INTERPRETING');
-  const resolved = MOCK_DATA.filter((c) => c.status === 'COMPLETE');
+  useEffect(() => {
+    let mounted = true;
+    consultationService
+      .list()
+      .then((res) => {
+        if (!mounted) return;
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        if (!rows.length) {
+          setConsultations([]);
+          setLoading(false);
+          return;
+        }
+        const merged = rows.map((r) => ({
+          ...(MOCK_DATA.find((x) => x.id === (r.consultation_id || r.id)) || {}),
+          id: r.consultation_id || r.id,
+          name: r.client_name || r.name || 'Unknown',
+          email: r.client_email || r.email || '',
+          status: r.status || 'PROCESSING',
+          waitingMin: r.waiting_min ?? 0,
+          overallConfidence: Math.round((r.overall_confidence ?? 0.75) * 100),
+          interpretations: r.interpretations || {},
+        }));
+        setConsultations(merged);
+        setUsingFallback(false);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setConsultations(MOCK_DATA);
+        setUsingFallback(true);
+        setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const pending = consultations.filter((c) => c.status === 'HIL_PENDING');
+  const review = consultations.filter((c) => c.status === 'INTERPRETING');
+  const resolved = consultations.filter((c) => c.status === 'COMPLETE');
 
   return (
     <motion.div {...pageTransition} style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 60 }}>
       <PageHeader title="Drishti Board" subtitle="Jyotishi review queue" right={<AgentChip />} />
 
       <div style={{ padding: '24px 28px', maxWidth: 1600, margin: '0 auto' }}>
+        {usingFallback && (
+          <div style={{ fontSize: 12, color: 'var(--amber-700)', marginBottom: 10 }}>
+            API unavailable, showing local fallback data.
+          </div>
+        )}
+        {loading ? (
+          <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading Drishti board...</div>
+        ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 18 }}>
           <Column tone="amber" title="Vichaaradheen" count={pending.length} subtitle="Awaiting Jyotishi">
             {pending.map((c) => (
@@ -39,6 +89,7 @@ export default function HILBoard() {
             {!resolved.length && <Empty>None resolved yet</Empty>}
           </Column>
         </div>
+        )}
       </div>
     </motion.div>
   );
