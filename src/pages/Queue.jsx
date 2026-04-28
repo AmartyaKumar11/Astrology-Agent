@@ -14,6 +14,7 @@ import {
 import { IArrowRight, IDoc, IX } from '../components/icons.jsx';
 import KundliChart from '../components/KundliChart.jsx';
 import { consultationService } from '../services/consultationService.js';
+import { reportService } from '../services/reportService.js';
 import {
   listContainer,
   listItem,
@@ -42,18 +43,35 @@ export default function Queue() {
           setLoading(false);
           return;
         }
-        const mapped = rows.map((r) => ({
-          ...(MOCK_DATA.find((x) => x.id === (r.consultation_id || r.id)) || {}),
+        const mapped = rows.map((r) => {
+          const seed = MOCK_DATA.find((x) => x.id === (r.consultation_id || r.id)) || {};
+          return {
+          ...seed,
           id: r.consultation_id || r.id,
           name: r.client_name || r.name || 'Unknown',
           email: r.client_email || r.email || '',
-          receivedAt: r.received_at || r.receivedAt || '',
+          receivedAt: r.received_at || r.receivedAt || seed.receivedAt || '',
           status: r.status || 'PROCESSING',
           overallConfidence: Math.round((r.overall_confidence ?? 0.75) * 100),
           processingTime: r.processing_time || r.processingTime || '00:00:00',
-          concerns: r.concerns || [],
-          interpretations: r.interpretations || {},
-        }));
+          concerns: Array.isArray(r.concerns) ? r.concerns : (seed.concerns || []),
+          interpretations: r.interpretations || seed.interpretations || {},
+          dob: r.birth_data?.dob || seed.dob || '—',
+          tob: r.birth_data?.tob || seed.tob || '—',
+          pob: r.birth_data?.pob || seed.pob || '—',
+          coordinates: r.birth_data?.coordinates || seed.coordinates || '—',
+          timezone: r.birth_data?.timezone || seed.timezone || '—',
+          ayanamsa: r.birth_data?.ayanamsa || seed.ayanamsa || 'Lahiri',
+          lagna: r.birth_data?.lagna || seed.lagna || '—',
+          activeMahadasha: r.chart?.active_mahadasha || seed.activeMahadasha || '—',
+          activeAntardasha: r.chart?.active_antardasha || seed.activeAntardasha || '—',
+          dashaEnds: r.chart?.dasha_ends || seed.dashaEnds || '—',
+          rasiChart: r.chart?.house_placements || seed.rasiChart || {},
+          yogas: Array.isArray(r.chart?.yogas) ? r.chart.yogas : (seed.yogas || []),
+          doshas: Array.isArray(r.chart?.doshas) ? r.chart.doshas : (seed.doshas || []),
+          remedy: r.remedy || seed.remedy || '—',
+        };
+        });
         setConsultations(mapped);
         setUsingFallback(false);
         setLoading(false);
@@ -353,6 +371,67 @@ function QueueRow({ c, last, onOpen, onViewReport, completedView }) {
 
 function ReportModal({ id, consultations, onClose, onOpenFull }) {
   const c = consultations.find((x) => x.id === id);
+  const [reportData, setReportData] = useState(null);
+  const [consultationData, setConsultationData] = useState(null);
+  const [loadingReport, setLoadingReport] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoadingReport(true);
+    Promise.allSettled([reportService.getByConsultationId(id), consultationService.getById(id)])
+      .then(([reportRes, consultationRes]) => {
+        if (!mounted) return;
+
+        if (reportRes.status === 'fulfilled' && reportRes.value?.content) {
+          setReportData(reportRes.value.content);
+        } else {
+          setReportData(null);
+        }
+
+        if (consultationRes.status === 'fulfilled' && consultationRes.value) {
+          const d = consultationRes.value;
+          setConsultationData({
+            dob: d.birth_data?.dob || '—',
+            tob: d.birth_data?.tob || '—',
+            pob: d.birth_data?.pob || '—',
+            coordinates: d.birth_data?.coordinates || '—',
+            timezone: d.birth_data?.timezone || '—',
+            ayanamsa: d.birth_data?.ayanamsa || 'Lahiri',
+            lagna: d.birth_data?.lagna || '—',
+            activeMahadasha: d.chart?.active_mahadasha || '—',
+            activeAntardasha: d.chart?.active_antardasha || '—',
+            dashaEnds: d.chart?.dasha_ends || '—',
+            rasiChart: d.chart?.house_placements || {},
+            yogas: Array.isArray(d.chart?.yogas) ? d.chart.yogas : [],
+            doshas: Array.isArray(d.chart?.doshas) ? d.chart.doshas : [],
+            interpretations: Array.isArray(d.interpretations)
+              ? Object.fromEntries(
+                  d.interpretations.map((it) => [
+                    (it.concern || 'general').toLowerCase(),
+                    {
+                      insight: it.insight || '',
+                      confidence: Math.round((it.confidence_score ?? 0.7) * 100),
+                      remedy: it.remedy || '',
+                    },
+                  ])
+                )
+              : {},
+            remedy: d.remedy || '',
+          });
+        } else {
+          setConsultationData(null);
+        }
+
+        setLoadingReport(false);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setLoadingReport(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onClose();
@@ -365,6 +444,16 @@ function ReportModal({ id, consultations, onClose, onOpenFull }) {
     };
   }, [onClose]);
   if (!c) return null;
+  const view = {
+    ...c,
+    ...(consultationData || {}),
+    ...(reportData || {}),
+    interpretations: reportData?.interpretations || c.interpretations || {},
+    yogas: reportData?.yogas || c.yogas || [],
+    doshas: reportData?.doshas || c.doshas || [],
+    rasiChart: reportData?.rasiChart || c.rasiChart || {},
+    receivedAt: reportData?.receivedAt || c.receivedAt || '',
+  };
   return (
     <motion.div
       {...modalOverlay}
@@ -448,7 +537,11 @@ function ReportModal({ id, consultations, onClose, onOpenFull }) {
           </button>
         </div>
         <div style={{ padding: '28px 36px', maxHeight: 'calc(100vh - 140px)', overflowY: 'auto' }}>
-          <ReportInline c={c} />
+          {loadingReport ? (
+            <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading report...</div>
+          ) : (
+            <ReportInline c={view} />
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -464,7 +557,7 @@ function ReportInline({ c }) {
         </h2>
         <div style={{ fontSize: 13, color: 'var(--muted)' }}>
           <b style={{ color: 'var(--text)' }}>{c.name}</b> · {c.id} · Generated{' '}
-          {c.receivedAt.split(' ')[0]}
+          {(c.receivedAt || '').split(' ')[0] || '—'}
         </div>
       </div>
 
@@ -514,8 +607,8 @@ function ReportInline({ c }) {
               Yogas
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {c.yogas.length ? (
-                c.yogas.map((y) => (
+              {(c.yogas || []).length ? (
+                (c.yogas || []).map((y) => (
                   <Badge key={y} tone="emerald" dot>
                     {y}
                   </Badge>
@@ -539,8 +632,8 @@ function ReportInline({ c }) {
               Doshas
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {c.doshas.length ? (
-                c.doshas.map((d) => (
+              {(c.doshas || []).length ? (
+                (c.doshas || []).map((d) => (
                   <Badge key={d} tone="amber" dot>
                     {d}
                   </Badge>
@@ -555,7 +648,7 @@ function ReportInline({ c }) {
 
       <MiniReportSection num="4" title="Jeevan Margdarshan">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {Object.entries(c.interpretations).map(([k, v]) => (
+          {Object.entries(c.interpretations || {}).map(([k, v]) => (
             <div
               key={k}
               style={{

@@ -609,9 +609,9 @@ function LogEntry({ entry }) {
 
 function confidenceBadge(score) {
   const normalized = score > 1 ? score / 100 : score;
-  if (normalized >= 0.8) return { label: 'EXCELLENT', tone: 'emerald' };
-  if (normalized >= 0.5) return { label: 'GOOD', tone: 'amber' };
-  return { label: 'OKAY', tone: 'rose' };
+  if (normalized >= 0.8) return { label: 'EXCELLENT', emoji: '🟢', tone: 'emerald' };
+  if (normalized >= 0.5) return { label: 'GOOD', emoji: '🟡', tone: 'amber' };
+  return { label: 'OKAY', emoji: '🔴', tone: 'rose' };
 }
 
 function InterpretationCard({ domain, v }) {
@@ -657,6 +657,10 @@ function InterpretationCard({ domain, v }) {
     );
 
   const cBadge = confidenceBadge(v.confidence_score ?? v.confidence);
+  const normalized = (v.confidence_score ?? (v.confidence / 100)) > 1
+    ? (v.confidence_score ?? (v.confidence / 100)) / 100
+    : (v.confidence_score ?? (v.confidence / 100));
+  const isBad = normalized < 0.5;
 
   return (
     <motion.div
@@ -664,8 +668,9 @@ function InterpretationCard({ domain, v }) {
       layout
       style={{
         padding: 14,
-        background: 'var(--card)',
-        border: '1px solid var(--border)',
+        background: isBad ? '#FEF2F2' : '#EFF6FF',
+        border: '1px solid ' + (isBad ? '#FCA5A5' : '#93C5FD'),
+        borderLeft: `4px solid ${isBad ? '#EF4444' : '#3B82F6'}`,
         borderRadius: 'var(--radius)',
         boxShadow: 'var(--shadow-sm)',
       }}
@@ -715,27 +720,21 @@ function InterpretationCard({ domain, v }) {
         </div>
       )}
       <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Badge tone={cBadge.tone}>{cBadge.label}</Badge>
-        <span
-          title={`Exact confidence: ${Math.round((v.confidence_score ?? (v.confidence / 100)) * 100)}%`}
-          style={{ fontSize: 11, color: 'var(--muted)' }}
-        >
-          confidence
-        </span>
+        <Badge tone={cBadge.tone}>{cBadge.emoji} {cBadge.label}</Badge>
       </div>
-      {v.remedy && (
+      {isBad && v.remedy && (
         <div
           style={{
             marginTop: 10,
-            padding: '8px 10px',
-            background: 'var(--amber-50)',
-            border: '1px solid var(--amber-100)',
+            padding: '10px 12px',
+            background: '#FEE2E2',
+            borderLeft: '4px solid #EF4444',
             borderRadius: 8,
             fontSize: 12,
-            color: '#78350f',
+            color: '#7F1D1D',
           }}
         >
-          <b>Remedy:</b> {v.remedy}
+          <b>⚠️ Immediate Action Required:</b> {v.remedy}
         </div>
       )}
     </motion.div>
@@ -816,7 +815,7 @@ function HILPanel({ c, onConsult }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <IFlag size={14} />
               <span style={{ fontSize: 13, fontWeight: 700, textTransform: 'capitalize' }}>{key}</span>
-              <span style={{ fontSize: 11, color: 'var(--muted)' }}>· confidence {v.confidence}%</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>· {confidenceBadge(v.confidence_score ?? v.confidence).label}</span>
             </div>
 
             <div style={{ fontSize: 13, lineHeight: 1.55, color: '#374151' }}>{v.insight}</div>

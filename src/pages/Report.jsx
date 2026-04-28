@@ -110,7 +110,7 @@ export default function Report() {
           </h1>
           <div style={{ fontSize: 14, color: 'var(--muted)' }}>
             <b style={{ color: 'var(--text)' }}>{c.name}</b> · {c.id} · Generated{' '}
-            {c.receivedAt.split(' ')[0]}
+            {(c.receivedAt || '').split(' ')[0] || '—'}
           </div>
         </div>
 
@@ -164,8 +164,8 @@ export default function Report() {
                 Shubha Yogas
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {c.yogas.length ? (
-                  c.yogas.map((y) => (
+                {(c.yogas || []).length ? (
+                  (c.yogas || []).map((y) => (
                     <Badge key={y} tone="emerald" dot>
                       {y}
                     </Badge>
@@ -189,8 +189,8 @@ export default function Report() {
                 Dosha Vichar
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {c.doshas.length ? (
-                  c.doshas.map((d) => (
+                {(c.doshas || []).length ? (
+                  (c.doshas || []).map((d) => (
                     <Badge key={d} tone="amber" dot>
                       {d}
                     </Badge>
@@ -210,7 +210,7 @@ export default function Report() {
             animate="show"
             style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
           >
-            {Object.entries(c.interpretations).map(([k, v]) => (
+            {Object.entries(c.interpretations || {}).map(([k, v]) => (
               <motion.div
                 key={k}
                 variants={listItem}
@@ -258,7 +258,7 @@ export default function Report() {
 
         <ReportSection num="7" title="Shubha Muhurta">
           <div style={{ fontSize: 13, lineHeight: 1.65, color: '#374151' }}>
-            {c.interpretations.muhurta.insight}
+            {c.interpretations?.muhurta?.insight || 'Muhurta details are not available for this consultation yet.'}
           </div>
         </ReportSection>
 

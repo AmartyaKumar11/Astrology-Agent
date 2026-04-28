@@ -398,7 +398,20 @@ async function getConsultationByPublicId(publicId) {
   const birth = await pool.query(`SELECT * FROM birth_details WHERE consultation_ref = $1`, [c.id]);
   const chart = await pool.query(`SELECT * FROM charts WHERE consultation_ref = $1`, [c.id]);
   const interpretations = await pool.query(
-    `SELECT * FROM interpretations WHERE consultation_ref = $1 ORDER BY created_at ASC`,
+    `SELECT
+      i.id,
+      i.concern,
+      i.insight,
+      i.remedy,
+      i.confidence_score,
+      i.hil_status,
+      i.planet_indicator,
+      i.flagged,
+      i.flag_reason,
+      i.hil_notes
+     FROM interpretations i
+     WHERE i.consultation_ref = $1
+     ORDER BY i.created_at ASC`,
     [c.id]
   );
   const events = await pool.query(
