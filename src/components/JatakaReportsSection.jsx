@@ -494,8 +494,7 @@ function DailyReportCard({ entry }) {
 
           <div style={{ borderTop: '1px solid var(--border-soft)' }} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
-            <KV k="Mantra" v={entry.mantra} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, fontSize: 12 }}>
             <KV
               k="Colour"
               v={
