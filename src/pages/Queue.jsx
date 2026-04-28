@@ -48,7 +48,7 @@ export default function Queue() {
   const subtitleMap = {
     ALL: 'All Jatakas',
     PROCESSING: 'Currently being processed',
-    HIL: 'Awaiting Jyotishi review',
+    HIL: 'Jatakas awaiting Jyotishi review',
     COMPLETE: 'Delivered Patrikas',
   };
 
@@ -78,10 +78,9 @@ export default function Queue() {
             onClick={() => setFilter('PROCESSING')}
           />
           <StatCard
-            label="Awaiting Jyotishi"
+            label="Drishti Pending"
             value={counts.hil}
             tone="amber"
-            sub="awaiting astrologer"
             active={filter === 'HIL'}
             onClick={() => setFilter('HIL')}
           />
@@ -557,8 +556,8 @@ function ReportInline({ c }) {
           lineHeight: 1.55,
         }}
       >
-        This report has been reviewed by a certified human astrologer. Not a substitute for medical,
-        financial, or legal counsel.
+        This report has been reviewed by a certified Jyotishi. Not a substitute for medical, financial,
+        or legal counsel.
       </div>
     </div>
   );

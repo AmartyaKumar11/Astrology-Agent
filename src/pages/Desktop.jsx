@@ -87,7 +87,7 @@ export default function Desktop() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
           <Stat label="Consultations today" value={today} />
-          <Stat label="Awaiting Jyotishi" value={hilPending} tone={hilPending ? 'amber' : 'emerald'} />
+          <Stat label="Drishti pending" value={hilPending} tone={hilPending ? 'amber' : 'emerald'} />
         </div>
       </motion.div>
     </motion.div>

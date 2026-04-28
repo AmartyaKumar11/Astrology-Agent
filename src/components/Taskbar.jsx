@@ -53,7 +53,7 @@ export default function Taskbar() {
         <TaskbarBtn onClick={() => nav('/queue')} active={isQueue} title="Consultation Queue">
           <IGrid size={18} />
         </TaskbarBtn>
-        <TaskbarBtn onClick={() => nav('/hil')} active={isHil} badge={hilPending} title="HIL Review Board">
+        <TaskbarBtn onClick={() => nav('/hil')} active={isHil} badge={hilPending} title="Drishti Board">
           <IShield size={18} />
         </TaskbarBtn>
       </div>

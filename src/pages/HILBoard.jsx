@@ -18,21 +18,21 @@ export default function HILBoard() {
 
       <div style={{ padding: '24px 28px', maxWidth: 1600, margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 18 }}>
-          <Column tone="amber" title="Pending Review" count={pending.length} subtitle="Awaiting Jyotishi">
+          <Column tone="amber" title="Vichaaradheen" count={pending.length} subtitle="Awaiting Jyotishi">
             {pending.map((c) => (
               <KanbanCard key={c.id} c={c} pulse onOpen={() => nav(`/consultation/${c.id}`)} />
             ))}
             {!pending.length && <Empty>No pending consultations</Empty>}
           </Column>
 
-          <Column tone="indigo" title="Under Review" count={review.length} subtitle="In progress">
+          <Column tone="indigo" title="Drishti Mein" count={review.length} subtitle="In progress">
             {review.map((c) => (
               <KanbanCard key={c.id} c={c} onOpen={() => nav(`/consultation/${c.id}`)} />
             ))}
             {!review.length && <Empty>No active reviews</Empty>}
           </Column>
 
-          <Column tone="emerald" title="Resolved" count={resolved.length} subtitle="Cleared & delivered">
+          <Column tone="emerald" title="Nirnay" count={resolved.length} subtitle="Cleared & delivered">
             {resolved.map((c) => (
               <KanbanCard key={c.id} c={c} resolved onOpen={() => nav(`/consultation/${c.id}`)} />
             ))}

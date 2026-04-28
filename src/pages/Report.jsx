@@ -226,8 +226,8 @@ export default function Report() {
             lineHeight: 1.6,
           }}
         >
-          This report has been reviewed by a certified human astrologer. Astrological guidance is offered
-          for reflection and is not a substitute for medical, financial, or legal counsel.
+          This report has been reviewed by a certified Jyotishi. Astrological guidance is offered for
+          reflection and is not a substitute for medical, financial, or legal counsel.
         </div>
       </div>
     </motion.div>

@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MOCK_DATA, PIPELINE_STEPS, pipelineProgress } from '../data.js';
+import { MOCK_DATA } from '../data.js';
 import {
   AgentChip,
   Badge,
@@ -11,8 +11,9 @@ import {
   PageHeader,
   StatusBadge,
 } from '../components/primitives.jsx';
-import { ICheck, IDoc, IFlag, IShield, ITerminal, IX } from '../components/icons.jsx';
+import { ICheck, ICircleUser, IDoc, IFlag, IShield, ITerminal } from '../components/icons.jsx';
 import KundliChart from '../components/KundliChart.jsx';
+import JatakaReportsSection from '../components/JatakaReportsSection.jsx';
 import {
   listContainer,
   listItem,
@@ -49,44 +50,13 @@ export default function Consultation() {
   const isWorking = c.status !== 'COMPLETE' && logShown >= c.agentLog.length && c.status !== 'HIL_PENDING';
   const stillStreaming = logShown < c.agentLog.length;
 
-  const handleHIL = (key, action, modText, note) => {
-    setC((prev) => {
-      const next = JSON.parse(JSON.stringify(prev));
-      const sec = next.interpretations[key];
-      if (action === 'approve') {
-        sec.flagged = false;
-        sec.hilStatus = 'APPROVED';
-      }
-      if (action === 'reject') {
-        sec.flagged = false;
-        sec.hilStatus = 'REJECTED';
-      }
-      if (action === 'modify') {
-        sec.flagged = false;
-        sec.hilStatus = 'MODIFIED';
-        sec.insight = modText || sec.insight;
-      }
-      sec.hilNote = note || sec.hilNote;
-      next.agentLog = [
-        ...next.agentLog,
-        {
-          time: new Date().toLocaleTimeString([], { hour12: false }),
-          type: 'SUCCESS',
-          message: `HIL ${action.toUpperCase()}: ${key} section. Astrologer note recorded.`,
-        },
-      ];
-      const stillFlagged = Object.values(next.interpretations).some((v) => v.flagged);
-      if (!stillFlagged) {
-        next.status = 'COMPLETE';
-        next.hilStatus = 'APPROVED';
-        next.reportReady = true;
-      }
-      return next;
-    });
-    setLogShown((n) => n + 1);
-  };
-
-  const stepIdx = pipelineProgress(c);
+  const [toastVisible, setToastVisible] = useState(false);
+  const handleConsult = () => setToastVisible(true);
+  useEffect(() => {
+    if (!toastVisible) return;
+    const t = setTimeout(() => setToastVisible(false), 3000);
+    return () => clearTimeout(t);
+  }, [toastVisible]);
 
   return (
     <motion.div {...pageTransition} style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 60 }}>
@@ -234,10 +204,6 @@ export default function Consultation() {
               <Fact label="Ayanamsa" v={c.ayanamsa} />
               <Fact label="Lagna" v={c.lagna} accent />
             </div>
-          </Card>
-
-          <Card style={{ padding: '18px 22px' }}>
-            <Pipeline currentIdx={stepIdx} />
           </Card>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,400px) 1fr', gap: 16, alignItems: 'start' }}>
@@ -389,14 +355,47 @@ export default function Consultation() {
             </motion.div>
           </div>
 
+          <JatakaReportsSection c={c} />
+
           <AnimatePresence>
             {Object.values(c.interpretations).some((v) => v.flagged) && (
-              <HILPanel c={c} onAction={handleHIL} />
+              <HILPanel c={c} onConsult={handleConsult} />
             )}
           </AnimatePresence>
 
         </div>
       </div>
+
+      <AnimatePresence>
+        {toastVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            style={{
+              position: 'fixed',
+              bottom: 32,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: '#4F46E5',
+              color: '#fff',
+              padding: '12px 20px',
+              borderRadius: 999,
+              fontSize: 13,
+              fontWeight: 600,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            }}
+          >
+            <ICheck size={14} />
+            Sent to Jyotishi for review
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -502,97 +501,6 @@ function LogEntry({ entry }) {
   );
 }
 
-function Pipeline({ currentIdx }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: '100%' }}>
-      {PIPELINE_STEPS.map((step, i) => {
-        const done = i < currentIdx;
-        const cur = i === currentIdx;
-        return (
-          <Fragment key={step}>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 6,
-                minWidth: 0,
-                flex: '0 0 auto',
-              }}
-            >
-              <motion.div
-                layout
-                animate={{
-                  background: done ? 'var(--indigo)' : cur ? 'var(--indigo-50)' : '#F3F4F6',
-                  color: done ? '#fff' : cur ? 'var(--indigo)' : '#9CA3AF',
-                  scale: cur ? 1.06 : 1,
-                }}
-                transition={{ duration: 0.35, ease: 'easeOut' }}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 999,
-                  border: cur ? '2px solid var(--indigo)' : '2px solid transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  position: 'relative',
-                }}
-              >
-                {done ? <ICheck size={14} /> : i + 1}
-                {cur && (
-                  <span
-                    className="pulse-dot"
-                    style={{ position: 'absolute', inset: -2, borderRadius: 999, color: 'var(--indigo)' }}
-                  />
-                )}
-              </motion.div>
-              <div
-                style={{
-                  fontSize: 10.5,
-                  fontWeight: done || cur ? 600 : 500,
-                  color: done ? 'var(--indigo-700)' : cur ? 'var(--indigo)' : 'var(--muted)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {step}
-              </div>
-            </div>
-            {i < PIPELINE_STEPS.length - 1 && (
-              <div
-                style={{
-                  flex: 1,
-                  height: 2,
-                  background: '#E5E7EB',
-                  margin: '0 6px',
-                  marginBottom: 18,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  borderRadius: 1,
-                }}
-              >
-                <motion.div
-                  initial={false}
-                  animate={{ width: done ? '100%' : '0%' }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'var(--indigo)',
-                    transformOrigin: 'left',
-                  }}
-                />
-              </div>
-            )}
-          </Fragment>
-        );
-      })}
-    </div>
-  );
-}
-
 function InterpretationCard({ domain, v }) {
   const titleMap = {
     career: 'Career',
@@ -624,7 +532,7 @@ function InterpretationCard({ domain, v }) {
     statusBadge = (
       <span className="blink">
         <Badge tone="amber" dot>
-          HIL PENDING
+          DRISHTI PENDING
         </Badge>
       </span>
     );
@@ -688,7 +596,7 @@ function InterpretationCard({ domain, v }) {
             color: 'var(--muted)',
           }}
         >
-          <b style={{ color: '#374151' }}>Astrologer note:</b> {v.hilNote}
+          <b style={{ color: '#374151' }}>Jyotishi note:</b> {v.hilNote}
         </div>
       )}
       <div style={{ marginTop: 10 }}>
@@ -698,11 +606,8 @@ function InterpretationCard({ domain, v }) {
   );
 }
 
-function HILPanel({ c, onAction }) {
+function HILPanel({ c, onConsult }) {
   const flagged = Object.entries(c.interpretations).filter(([, v]) => v.flagged);
-  const [drafts, setDrafts] = useState({});
-  const [notes, setNotes] = useState({});
-  const [editing, setEditing] = useState({});
 
   return (
     <motion.div
@@ -778,25 +683,7 @@ function HILPanel({ c, onAction }) {
               <span style={{ fontSize: 11, color: 'var(--muted)' }}>· confidence {v.confidence}%</span>
             </div>
 
-            {editing[key] ? (
-              <textarea
-                value={drafts[key] !== undefined ? drafts[key] : v.insight}
-                onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
-                style={{
-                  width: '100%',
-                  minHeight: 80,
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: 10,
-                  fontSize: 13,
-                  fontFamily: 'inherit',
-                  outline: 'none',
-                  resize: 'vertical',
-                }}
-              />
-            ) : (
-              <div style={{ fontSize: 13, lineHeight: 1.55, color: '#374151' }}>{v.insight}</div>
-            )}
+            <div style={{ fontSize: 13, lineHeight: 1.55, color: '#374151' }}>{v.insight}</div>
 
             <div
               style={{
@@ -811,55 +698,14 @@ function HILPanel({ c, onAction }) {
               <b>Reason:</b> {v.flagReason}
             </div>
 
-            <textarea
-              placeholder="Jyotishi note..."
-              value={notes[key] || ''}
-              onChange={(e) => setNotes((n) => ({ ...n, [key]: e.target.value }))}
-              style={{
-                width: '100%',
-                marginTop: 10,
-                minHeight: 48,
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: '8px 10px',
-                fontSize: 12,
-                fontFamily: 'inherit',
-                outline: 'none',
-                resize: 'vertical',
-              }}
-            />
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
-              {editing[key] ? (
-                <>
-                  <Button size="sm" variant="secondary" onClick={() => setEditing((e) => ({ ...e, [key]: false }))}>
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="warning"
-                    onClick={() => {
-                      onAction(key, 'modify', drafts[key], notes[key]);
-                      setEditing((e) => ({ ...e, [key]: false }));
-                    }}
-                  >
-                    <ICheck size={12} /> Save Modification
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button size="sm" variant="danger" onClick={() => onAction(key, 'reject', null, notes[key])}>
-                    <IX size={12} /> Reject
-                  </Button>
-                  <Button size="sm" variant="warning" onClick={() => setEditing((e) => ({ ...e, [key]: true }))}>
-                    Modify
-                  </Button>
-                  <Button size="sm" variant="success" onClick={() => onAction(key, 'approve', null, notes[key])}>
-                    <ICheck size={12} /> Approve
-                  </Button>
-                </>
-              )}
-            </div>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={onConsult}
+              style={{ width: '100%', marginTop: 12, justifyContent: 'center' }}
+            >
+              <ICircleUser size={14} /> Consult with Jyotishi
+            </Button>
           </motion.div>
         ))}
       </motion.div>
