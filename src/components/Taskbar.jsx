@@ -83,7 +83,7 @@ export default function Taskbar() {
               display: 'inline-block',
             }}
           />
-          Agent Status: ACTIVE
+          Active
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}>
           <IWifi size={14} />

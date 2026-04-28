@@ -1,3 +1,4 @@
+// REVIEW: possible technical term remaining
 // Central mock data for 5 consultations.
 // Houses are 1..12. Planet abbreviations: Su Mo Ma Me Ju Ve Sa Ra Ke. Lg = Lagna marker.
 
@@ -55,11 +56,11 @@ export const MOCK_DATA = [
     remedy: 'Recite Hanuman Chalisa daily at sunrise. Donate black sesame seeds on Saturdays. Wear blue sapphire only after trial period of 3 days.',
     reportReady: false,
     agentLog: makeLog([
-      ['INFO',      'Inbound consultation received via email gateway.'],
+      ['INFO',      'New Jataka received.'],
       ['INFO',      'Parsing birth data: DOB=15 July 1990, TOB=06:32 AM, POB=Mumbai, Maharashtra.'],
       ['INFO',      'Geocoding birth location Mumbai, Maharashtra...'],
       ['SUCCESS',   'Coordinates locked: 18.97°N 72.82°E UTC+5:30. Lahiri Ayanamsa applied.'],
-      ['INFO',      'Swiss Ephemeris v2.10 initialised. Calculating planetary positions for 15 July 1990 06:32 AM IST...'],
+      ['INFO',      'Planetary computation initialised. Calculating planetary positions for 15 July 1990 06:32 AM IST...'],
       ['SUCCESS',   'Lagna confirmed: Cancer. Moon in 1st house, strong positional strength (Shadbala 6.4/8).'],
       ['SUCCESS',   'Raj Yoga detected — Jupiter conjunct Sun in 10th house from Lagna. Confidence: HIGH.'],
       ['SUCCESS',   'Gajakesari Yoga detected — Jupiter–Moon kendra relationship. Confidence: HIGH.'],
@@ -71,12 +72,12 @@ export const MOCK_DATA = [
       ['INFO',      'Generating interpretation for concern: Finance.'],
       ['SUCCESS',   'Finance insight cleared — confidence 78%.'],
       ['INFO',      'Generating interpretation for concern: Health.'],
-      ['FLAGGED',   'FLAGGED: Saturn transiting natal 8th house. Health prediction sensitivity threshold exceeded.'],
-      ['ESCALATED', 'Routing health interpretation to HIL review queue. Awaiting human astrologer.'],
+      ['FLAGGED',   'Saturn transiting natal 8th house. Health prediction sensitivity threshold exceeded.'],
+      ['ROUTED',    'Health section routed to Drishti Board.'],
       ['SUCCESS',   'Relations insight cleared — confidence 81%.'],
       ['SUCCESS',   'Muhurta calculation complete — confidence 88%.'],
-      ['INFO',      'Compiling remedy recommendations from Parashara corpus and regional traditions.'],
-      ['INFO',      '4 of 5 sections auto-cleared. 1 awaiting HIL.'],
+      ['INFO',      'Compiling remedy recommendations.'],
+      ['INFO',      '4 of 5 sections cleared. 1 awaiting Jyotishi.'],
     ]),
   },
   {
@@ -125,7 +126,7 @@ export const MOCK_DATA = [
       ['INFO',    'Inbound consultation received.'],
       ['INFO',    'Parsing birth data: DOB=03 Feb 1988, TOB=11:48 PM, POB=Chennai.'],
       ['SUCCESS', 'Coordinates locked: 13.08°N 80.27°E. Lahiri Ayanamsa applied.'],
-      ['INFO',    'Swiss Ephemeris calculating planetary positions...'],
+      ['INFO',    'Calculating planetary positions...'],
       ['SUCCESS', 'Lagna confirmed: Libra. No malefic in 1st house.'],
       ['SUCCESS', 'Dhana Yoga detected — 2nd lord Mars in own sign aspecting 11th.'],
       ['INFO',    'Vimshottari: Venus Mahadasha → Sun Antardasha. Ends Feb 2027.'],
@@ -181,10 +182,10 @@ export const MOCK_DATA = [
       ['SUCCESS',   'Budha-Aditya Yoga detected — Mercury and Sun conjunct in 7th house.'],
       ['WARNING',   'Kala Sarpa Dosha confirmed — all planets between Rahu (9H) and Ketu (3H).'],
       ['INFO',      'Vimshottari: Rahu Mahadasha → Jupiter Antardasha. Ends Jul 2029.'],
-      ['FLAGGED',   'FLAGGED: Finance interpretation involves material capital decision. Confidence 58% — below auto-clear threshold.'],
-      ['FLAGGED',   'FLAGGED: Litigation muhurta below 50% confidence under Kala Sarpa influence.'],
-      ['ESCALATED', 'Routing 2 sections to HIL queue.'],
-      ['INFO',      'Career, Health, Relations sections cleared autonomously.'],
+      ['FLAGGED',   'Finance interpretation involves material capital decision. Confidence 58% — below auto-clear threshold.'],
+      ['FLAGGED',   'Litigation muhurta below 50% confidence under Kala Sarpa influence.'],
+      ['ROUTED',    '2 sections routed to Drishti Board.'],
+      ['INFO',      'Career, Health, Relations sections cleared.'],
     ]),
   },
   {
@@ -290,9 +291,9 @@ export const MOCK_DATA = [
       ['SUCCESS', 'Lakshmi Yoga — 9th lord Saturn well-placed; Venus in 10th.'],
       ['WARNING', 'Mangal Dosha — Mars in 8th house. Mitigation factors present.'],
       ['INFO',    'All 5 interpretations generated.'],
-      ['SUCCESS', 'All sections auto-cleared. Confidence > threshold.'],
-      ['SUCCESS', 'HIL spot-check approved by astrologer Pt. R. Joshi.'],
-      ['SUCCESS', 'Final report compiled and delivered. Email sent at 21:14 IST.'],
+      ['SUCCESS', 'All sections cleared.'],
+      ['SUCCESS', 'Review approved by Jyotishi.'],
+      ['SUCCESS', 'Final report compiled and delivered. Patrika delivered.'],
     ]),
   },
 ];

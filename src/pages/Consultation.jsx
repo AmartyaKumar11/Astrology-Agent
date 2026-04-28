@@ -98,7 +98,7 @@ export default function Consultation() {
             <StatusBadge status={c.status} />
             {c.reportReady && (
               <Button size="sm" variant="secondary" onClick={() => nav(`/report/${c.id}`)}>
-                <IDoc size={14} /> View Report
+                <IDoc size={14} /> View Patrika
               </Button>
             )}
           </div>
@@ -150,37 +150,8 @@ export default function Consultation() {
               <ITerminal size={16} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>Agent Live Log</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)' }}>Real-time commentary</div>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>Live Activity</div>
             </div>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: 0.6,
-                color: 'var(--emerald-700)',
-                background: 'var(--emerald-50)',
-                border: '1px solid var(--emerald-100)',
-                padding: '3px 8px',
-                borderRadius: 999,
-              }}
-            >
-              <span
-                className="pulse-dot"
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 999,
-                  background: 'var(--emerald)',
-                  color: 'var(--emerald)',
-                  display: 'inline-block',
-                }}
-              />
-              LIVE
-            </span>
           </div>
           <div
             ref={logRef}
@@ -211,7 +182,6 @@ export default function Consultation() {
                     display: 'inline-block',
                   }}
                 />
-                Agent is processing<span className="blink">...</span>
               </div>
             )}
           </div>
@@ -251,7 +221,7 @@ export default function Consultation() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(7,1fr)',
+                gridTemplateColumns: 'repeat(5,1fr)',
                 gap: 10,
                 marginTop: 16,
                 paddingTop: 14,
@@ -261,8 +231,6 @@ export default function Consultation() {
               <Fact label="DOB" v={c.dob} />
               <Fact label="TOB" v={c.tob} />
               <Fact label="POB" v={c.pob} />
-              <Fact label="Coord." v={c.coordinates} />
-              <Fact label="Tz" v={c.timezone} />
               <Fact label="Ayanamsa" v={c.ayanamsa} />
               <Fact label="Lagna" v={c.lagna} accent />
             </div>
@@ -275,7 +243,7 @@ export default function Consultation() {
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,400px) 1fr', gap: 16, alignItems: 'start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Card style={{ padding: 16 }}>
-                <Section title="Rasi Chart" sub="North Indian style" />
+                <Section title="Rasi Chart" />
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
                   <KundliChart chart={c.rasiChart} size={320} lagnaSign={c.lagna} />
                 </div>
@@ -427,38 +395,6 @@ export default function Consultation() {
             )}
           </AnimatePresence>
 
-          <Card
-            style={{
-              padding: '12px 18px',
-              display: 'flex',
-              gap: 24,
-              alignItems: 'center',
-              fontSize: 12,
-              color: 'var(--muted)',
-              background: '#fff',
-            }}
-          >
-            <Metric
-              k="Overall confidence"
-              v={`${c.overallConfidence}%`}
-              tone={c.overallConfidence >= 75 ? 'emerald' : 'amber'}
-            />
-            <Metric
-              k="Auto-cleared"
-              v={`${
-                Object.values(c.interpretations).filter((v) => !v.flagged && v.hilStatus !== 'REJECTED').length
-              }/${Object.keys(c.interpretations).length} sections`}
-            />
-            <Metric
-              k="Flagged"
-              v={`${Object.values(c.interpretations).filter((v) => v.flagged).length}/${
-                Object.keys(c.interpretations).length
-              }`}
-            />
-            <Metric k="Ephemeris" v="Swiss v2.10" />
-            <Metric k="Ayanamsa" v={c.ayanamsa} />
-            <Metric k="Processing" v={c.processingTime} />
-          </Card>
         </div>
       </div>
     </motion.div>
@@ -514,24 +450,13 @@ function Section({ title, sub }) {
   );
 }
 
-function Metric({ k, v, tone }) {
-  const fg =
-    tone === 'emerald' ? 'var(--emerald-700)' : tone === 'amber' ? 'var(--amber-700)' : 'var(--text)';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <span style={{ color: 'var(--muted)' }}>{k}:</span>
-      <span style={{ color: fg, fontWeight: 600 }}>{v}</span>
-    </div>
-  );
-}
-
 function LogEntry({ entry }) {
   const colors = {
     INFO:      { left: 'var(--blue)',    badge: 'var(--blue-50)',    fg: '#1D4ED8' },
     SUCCESS:   { left: 'var(--emerald)', badge: 'var(--emerald-50)', fg: 'var(--emerald-700)' },
     WARNING:   { left: 'var(--amber)',   badge: 'var(--amber-50)',   fg: 'var(--amber-700)' },
     FLAGGED:   { left: 'var(--rose)',    badge: 'var(--rose-50)',    fg: 'var(--rose-700)' },
-    ESCALATED: { left: 'var(--purple)',  badge: 'var(--purple-50)',  fg: '#6D28D9' },
+    ROUTED:    { left: 'var(--purple)',  badge: 'var(--purple-50)',  fg: '#6D28D9' },
   }[entry.type] || { left: '#9CA3AF', badge: '#F3F4F6', fg: '#374151' };
 
   return (
@@ -706,7 +631,7 @@ function InterpretationCard({ domain, v }) {
   else
     statusBadge = (
       <Badge tone="emerald" dot>
-        AUTO-CLEARED
+        CLEARED
       </Badge>
     );
 
@@ -725,11 +650,8 @@ function InterpretationCard({ domain, v }) {
       <div
         style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}
       >
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-            {titleMap[domain] || domain}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>Triggered by {v.planet}</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+          {titleMap[domain] || domain}
         </div>
         {statusBadge}
       </div>
@@ -822,9 +744,9 @@ function HILPanel({ c, onAction }) {
           <IShield size={16} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>HIL Review Required</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Requires Jyotishi Review</div>
           <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-            {flagged.length} section{flagged.length !== 1 ? 's' : ''} routed to human astrologer
+            {flagged.length} section{flagged.length !== 1 ? 's' : ''} routed to Jyotishi
           </div>
         </div>
         <Badge tone="amber" dot>
@@ -890,7 +812,7 @@ function HILPanel({ c, onAction }) {
             </div>
 
             <textarea
-              placeholder="Add astrologer note..."
+              placeholder="Jyotishi note..."
               value={notes[key] || ''}
               onChange={(e) => setNotes((n) => ({ ...n, [key]: e.target.value }))}
               style={{

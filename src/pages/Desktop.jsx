@@ -6,7 +6,6 @@ import { pageTransition } from '../components/motion.js';
 export default function Desktop() {
   const hilPending = MOCK_DATA.filter((c) => c.status === 'HIL_PENDING').length;
   const today = MOCK_DATA.length;
-  const avgConf = Math.round(MOCK_DATA.reduce((a, c) => a + c.overallConfidence, 0) / MOCK_DATA.length);
 
   return (
     <motion.div
@@ -88,24 +87,7 @@ export default function Desktop() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
           <Stat label="Consultations today" value={today} />
-          <Stat label="HIL pending" value={hilPending} tone={hilPending ? 'amber' : 'emerald'} />
-          <Stat label="Avg confidence" value={`${avgConf}%`} />
-          <Stat label="Auto-cleared" value="84%" tone="emerald" />
-        </div>
-
-        <div
-          style={{
-            marginTop: 14,
-            paddingTop: 12,
-            borderTop: '1px solid var(--border)',
-            fontSize: 11,
-            color: 'var(--muted)',
-            display: 'flex',
-            justifyContent: 'space-between',
-          }}
-        >
-          <span>Swiss Ephemeris v2.10</span>
-          <span>Lahiri Ayanamsa</span>
+          <Stat label="Awaiting Jyotishi" value={hilPending} tone={hilPending ? 'amber' : 'emerald'} />
         </div>
       </motion.div>
     </motion.div>
