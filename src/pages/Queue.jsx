@@ -11,7 +11,7 @@ import {
   PageHeader,
   StatusBadge,
 } from '../components/primitives.jsx';
-import { IArrowRight, IDoc, ISparkle, IX } from '../components/icons.jsx';
+import { IArrowRight, IDoc, IX } from '../components/icons.jsx';
 import KundliChart from '../components/KundliChart.jsx';
 import {
   listContainer,
@@ -46,15 +46,15 @@ export default function Queue() {
   });
 
   const subtitleMap = {
-    ALL: "Agent's active consultation pipeline",
-    PROCESSING: 'Consultations currently being processed',
-    HIL: 'Consultations awaiting human astrologer review',
-    COMPLETE: 'Delivered reports — click any row to view',
+    ALL: 'All Jatakas',
+    PROCESSING: 'Currently being processed',
+    HIL: 'Jatakas awaiting Jyotishi review',
+    COMPLETE: 'Delivered Patrikas',
   };
 
   return (
     <motion.div {...pageTransition} style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 60 }}>
-      <PageHeader title="Consultation Queue" subtitle={subtitleMap[filter]} right={<AgentChip />} />
+      <PageHeader title="Jataka Queue" subtitle={subtitleMap[filter]} right={<AgentChip />} />
 
       <div style={{ padding: '24px 28px', maxWidth: 1440, margin: '0 auto' }}>
         <motion.div
@@ -67,7 +67,6 @@ export default function Queue() {
             label="Total Received"
             value={counts.total}
             tone="indigo"
-            sub="last 24h"
             active={filter === 'ALL'}
             onClick={() => setFilter('ALL')}
           />
@@ -75,15 +74,13 @@ export default function Queue() {
             label="Processing"
             value={counts.processing}
             tone="blue"
-            sub="in pipeline"
             active={filter === 'PROCESSING'}
             onClick={() => setFilter('PROCESSING')}
           />
           <StatCard
-            label="HIL Pending"
+            label="Drishti Pending"
             value={counts.hil}
             tone="amber"
-            sub="awaiting astrologer"
             active={filter === 'HIL'}
             onClick={() => setFilter('HIL')}
           />
@@ -91,47 +88,10 @@ export default function Queue() {
             label="Completed"
             value={counts.complete}
             tone="emerald"
-            sub="click to view reports"
             active={filter === 'COMPLETE'}
             onClick={() => setFilter('COMPLETE')}
           />
         </motion.div>
-
-        {filter !== 'ALL' && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              marginBottom: 14,
-              fontSize: 12,
-              color: 'var(--muted)',
-            }}
-          >
-            <span>
-              Filtered to{' '}
-              <b style={{ color: 'var(--text)' }}>
-                {filter === 'COMPLETE' ? 'Completed' : filter === 'HIL' ? 'HIL Pending' : 'Processing'}
-              </b>{' '}
-              · {filtered.length} of {counts.total}
-            </span>
-            <button
-              onClick={() => setFilter('ALL')}
-              style={{
-                border: '1px solid var(--border)',
-                background: '#fff',
-                borderRadius: 999,
-                padding: '3px 10px',
-                fontSize: 11,
-                cursor: 'pointer',
-                color: 'var(--text)',
-                fontWeight: 600,
-              }}
-            >
-              Clear filter
-            </button>
-          </div>
-        )}
 
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <div
@@ -149,13 +109,13 @@ export default function Queue() {
               letterSpacing: 0.6,
             }}
           >
-            <div>Consultation ID</div>
-            <div>Name / Email</div>
+            <div>ID</div>
+            <div>Jataka</div>
             <div>Received</div>
             <div>Concerns</div>
             <div>Stage</div>
             <div>Confidence</div>
-            <div style={{ textAlign: 'right' }}>Action</div>
+            <div />
           </div>
           {filtered.length ? (
             <motion.div key={filter} variants={listContainer} initial="hidden" animate="show">
@@ -317,7 +277,7 @@ function QueueRow({ c, last, onOpen, onViewReport, completedView }) {
               onViewReport();
             }}
           >
-            <IDoc size={12} /> View Report
+            <IDoc size={12} /> View Patrika
           </Button>
         ) : (
           <Button
@@ -328,7 +288,7 @@ function QueueRow({ c, last, onOpen, onViewReport, completedView }) {
               onOpen();
             }}
           >
-            Open Workspace <IArrowRight size={12} />
+            Open <IArrowRight size={12} />
           </Button>
         )}
       </div>
@@ -444,26 +404,8 @@ function ReportInline({ c }) {
   return (
     <div>
       <div style={{ textAlign: 'center', paddingBottom: 18, borderBottom: '2px solid var(--indigo)' }}>
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '4px 10px',
-            borderRadius: 999,
-            background: 'var(--indigo-50)',
-            border: '1px solid var(--indigo-100)',
-            fontSize: 10.5,
-            fontWeight: 600,
-            color: 'var(--indigo-700)',
-            letterSpacing: 0.5,
-            textTransform: 'uppercase',
-          }}
-        >
-          <ISparkle size={12} /> Generated by AI Agent · HIL Reviewed
-        </div>
         <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, margin: '10px 0 4px' }}>
-          Vedic Astrology Consultation Report
+          Jataka Patrika
         </h2>
         <div style={{ fontSize: 13, color: 'var(--muted)' }}>
           <b style={{ color: 'var(--text)' }}>{c.name}</b> · {c.id} · Generated{' '}
@@ -471,7 +413,7 @@ function ReportInline({ c }) {
         </div>
       </div>
 
-      <MiniReportSection num="1" title="Consultation Summary">
+      <MiniReportSection num="1" title="Jataka Vivarana">
         <div
           style={{
             display: 'grid',
@@ -556,7 +498,7 @@ function ReportInline({ c }) {
         </div>
       </MiniReportSection>
 
-      <MiniReportSection num="4" title="Life Guidance">
+      <MiniReportSection num="4" title="Jeevan Margdarshan">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {Object.entries(c.interpretations).map(([k, v]) => (
             <div
@@ -578,7 +520,7 @@ function ReportInline({ c }) {
               >
                 <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'capitalize' }}>{k}</div>
                 <Badge tone={v.confidence >= 75 ? 'emerald' : v.confidence >= 50 ? 'amber' : 'rose'}>
-                  {v.confidence}% · via {v.planet}
+                  {v.confidence}%
                 </Badge>
               </div>
               <div style={{ fontSize: 12.5, lineHeight: 1.55, color: '#374151' }}>{v.insight}</div>
@@ -587,7 +529,7 @@ function ReportInline({ c }) {
         </div>
       </MiniReportSection>
 
-      <MiniReportSection num="5" title="Remedy Recommendations">
+      <MiniReportSection num="5" title="Upaya">
         <div
           style={{
             padding: 14,
@@ -614,8 +556,8 @@ function ReportInline({ c }) {
           lineHeight: 1.55,
         }}
       >
-        Generated by Vedic Astrology AI Agent using Swiss Ephemeris v2.10 (Lahiri). Reviewed by certified
-        human astrologer where required. Not a substitute for medical, financial, or legal counsel.
+        This report has been reviewed by a certified Jyotishi. Not a substitute for medical, financial,
+        or legal counsel.
       </div>
     </div>
   );

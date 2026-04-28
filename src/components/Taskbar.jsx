@@ -53,7 +53,7 @@ export default function Taskbar() {
         <TaskbarBtn onClick={() => nav('/queue')} active={isQueue} title="Consultation Queue">
           <IGrid size={18} />
         </TaskbarBtn>
-        <TaskbarBtn onClick={() => nav('/hil')} active={isHil} badge={hilPending} title="HIL Review Board">
+        <TaskbarBtn onClick={() => nav('/hil')} active={isHil} badge={hilPending} title="Drishti Board">
           <IShield size={18} />
         </TaskbarBtn>
       </div>
@@ -83,7 +83,7 @@ export default function Taskbar() {
               display: 'inline-block',
             }}
           />
-          Agent Status: ACTIVE
+          Active
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}>
           <IWifi size={14} />

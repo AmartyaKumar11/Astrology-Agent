@@ -14,25 +14,25 @@ export default function HILBoard() {
 
   return (
     <motion.div {...pageTransition} style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 60 }}>
-      <PageHeader title="HIL Review Board" subtitle="Human astrologer review queue" right={<AgentChip />} />
+      <PageHeader title="Drishti Board" subtitle="Jyotishi review queue" right={<AgentChip />} />
 
       <div style={{ padding: '24px 28px', maxWidth: 1600, margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 18 }}>
-          <Column tone="amber" title="Pending Review" count={pending.length} subtitle="Awaiting astrologer">
+          <Column tone="amber" title="Vichaaradheen" count={pending.length} subtitle="Awaiting Jyotishi">
             {pending.map((c) => (
               <KanbanCard key={c.id} c={c} pulse onOpen={() => nav(`/consultation/${c.id}`)} />
             ))}
             {!pending.length && <Empty>No pending consultations</Empty>}
           </Column>
 
-          <Column tone="indigo" title="Under Review" count={review.length} subtitle="Astrologer engaged">
+          <Column tone="indigo" title="Drishti Mein" count={review.length} subtitle="In progress">
             {review.map((c) => (
               <KanbanCard key={c.id} c={c} onOpen={() => nav(`/consultation/${c.id}`)} />
             ))}
             {!review.length && <Empty>No active reviews</Empty>}
           </Column>
 
-          <Column tone="emerald" title="Resolved" count={resolved.length} subtitle="Cleared & delivered">
+          <Column tone="emerald" title="Nirnay" count={resolved.length} subtitle="Cleared & delivered">
             {resolved.map((c) => (
               <KanbanCard key={c.id} c={c} resolved onOpen={() => nav(`/consultation/${c.id}`)} />
             ))}
@@ -147,7 +147,6 @@ function KanbanCard({ c, pulse, resolved, onOpen }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{c.name}</div>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--muted)' }}>{c.id}</div>
         </div>
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--muted)' }}
@@ -218,7 +217,7 @@ function KanbanCard({ c, pulse, resolved, onOpen }) {
             onOpen();
           }}
         >
-          Open Workspace <IArrowRight size={12} />
+          Review <IArrowRight size={12} />
         </Button>
       </div>
     </motion.div>
