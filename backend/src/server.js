@@ -111,6 +111,179 @@ function queueOrRun(taskName, fn) {
   return Promise.resolve();
 }
 
+function toTitle(s) {
+  const t = String(s || '').trim();
+  if (!t) return '';
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+}
+
+function estimateLagnaFromDate(dob) {
+  const signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+  const digits = String(dob || '').replace(/[^0-9]/g, '');
+  const seed = Number(digits.slice(-4) || 0);
+  return signs[seed % 12];
+}
+
+function buildHousePlacements(seed = 0) {
+  const planets = ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'];
+  const out = {};
+  planets.forEach((p, i) => {
+    const h = ((seed + i * 3) % 12) + 1;
+    const k = `H${h}`;
+    out[k] = out[k] || [];
+    out[k].push(p);
+  });
+  return out;
+}
+
+async function geocodePlace(place) {
+  if (!place) return null;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place)}&limit=1`;
+  const res = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      'User-Agent': 'Astrology-Agent/1.0 (local-dev)',
+    },
+  });
+  let data = [];
+  if (res.ok) data = await res.json();
+  if (!Array.isArray(data) || !data.length) {
+    const key = String(place).trim().toLowerCase();
+    const fallback = {
+      mumbai: { latitude: 19.076, longitude: 72.8777 },
+      delhi: { latitude: 28.6139, longitude: 77.209 },
+      bengaluru: { latitude: 12.9716, longitude: 77.5946 },
+      bangalore: { latitude: 12.9716, longitude: 77.5946 },
+      chennai: { latitude: 13.0827, longitude: 80.2707 },
+      hyderabad: { latitude: 17.385, longitude: 78.4867 },
+      kolkata: { latitude: 22.5726, longitude: 88.3639 },
+    }[key];
+    if (!fallback) return null;
+    return { ...fallback, display_name: place };
+  }
+  return {
+    latitude: Number(data[0].lat),
+    longitude: Number(data[0].lon),
+    display_name: data[0].display_name,
+  };
+}
+
+function fallbackInterpretation(concern, chartData) {
+  const concernKey = String(concern || 'general').toLowerCase();
+  const base = {
+    career: {
+      insight: `Current ${chartData.active_mahadasha}-${chartData.active_antardasha} period supports disciplined career growth. Focus on consistent execution over sudden switches.`,
+      remedy: 'Offer water to Sun on Sundays and maintain a 40-day discipline tracker for work goals.',
+      confidence_score: 0.74,
+      planet_indicator: 'Saturn',
+    },
+    finance: {
+      insight: `Chart indicates stable accumulation when risk is controlled. Prefer long-horizon planning over speculative entries this cycle.`,
+      remedy: 'Donate yellow lentils on Thursdays and review all large spends before noon.',
+      confidence_score: 0.71,
+      planet_indicator: 'Jupiter',
+    },
+    health: {
+      insight: `Energy is moderate; stress and sleep rhythm need attention to avoid recurring strain.`,
+      remedy: 'Practice 12 minutes of alternate nostril breathing daily before sunrise.',
+      confidence_score: 0.49,
+      planet_indicator: 'Moon',
+    },
+    relations: {
+      insight: `Partnership outcomes improve through clear communication and reduced reactivity.`,
+      remedy: 'Observe a no-conflict communication window every Friday evening.',
+      confidence_score: 0.68,
+      planet_indicator: 'Venus',
+    },
+    muhurta: {
+      insight: `Auspicious windows are stronger in first half of day this week, especially on Thursday.`,
+      remedy: 'Schedule key beginnings in waxing moon period and avoid Rahu Kaal slots.',
+      confidence_score: 0.77,
+      planet_indicator: 'Mercury',
+    },
+  };
+  return base[concernKey] || {
+    insight: 'Chart indicates a balanced period with gradual progress.',
+    remedy: 'Perform short daily mantra practice at sunrise.',
+    confidence_score: 0.65,
+    planet_indicator: 'Jupiter',
+  };
+}
+
+async function generateInterpretationWithKimi({ concern, chartData, client }) {
+  const kimiKey = process.env.KIMI_API_KEY;
+  if (!kimiKey) return fallbackInterpretation(concern, chartData);
+
+  const prompt = `You are a Vedic astrology analyst.
+Return ONLY valid JSON:
+{"insight":"...","remedy":"...","confidence_score":0.0,"planet_indicator":"..."}
+
+Client: ${client.name}
+Concern: ${concern}
+Lagna: ${chartData.lagna}
+Mahadasha: ${chartData.active_mahadasha}
+Antardasha: ${chartData.active_antardasha}
+Yogas: ${(chartData.yogas || []).join(', ') || 'None'}
+Doshas: ${(chartData.doshas || []).join(', ') || 'None'}
+House placements: ${JSON.stringify(chartData.house_placements)}`;
+
+  try {
+    const res = await fetch(process.env.KIMI_BASE_URL || 'https://api.moonshot.cn/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${kimiKey}`,
+      },
+      body: JSON.stringify({
+        model: process.env.KIMI_MODEL || 'moonshot-v1-8k',
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: 'You are an expert Vedic astrologer. Output strict JSON only.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+    if (!res.ok) return fallbackInterpretation(concern, chartData);
+    const json = await res.json();
+    const text = json?.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(text);
+    const confidence = Number(parsed.confidence_score);
+    return {
+      insight: parsed.insight || fallbackInterpretation(concern, chartData).insight,
+      remedy: parsed.remedy || fallbackInterpretation(concern, chartData).remedy,
+      confidence_score: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0.7,
+      planet_indicator: parsed.planet_indicator || fallbackInterpretation(concern, chartData).planet_indicator,
+    };
+  } catch {
+    return fallbackInterpretation(concern, chartData);
+  }
+}
+
+function buildDailyRecord(date, forecast, concern) {
+  return {
+    date,
+    vara: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(date).getDay()],
+    tithi: 'Shukla',
+    nakshatra: 'Rohini',
+    yoga: 'Siddhi',
+    karana: 'Bava',
+    lucky_numbers: [3, 6, 9],
+    forecast,
+    dasha_insight: forecast,
+    transit_alert: `Focus on ${concern.toLowerCase()} priorities with calm execution.`,
+    career_tip: 'Prioritize one high-impact task before noon.',
+    finance_tip: 'Avoid impulsive spending in Rahu Kaal window.',
+    health_tip: 'Hydrate and maintain fixed sleep cycle.',
+    lucky_colour: 'Indigo',
+    lucky_direction: 'East',
+    auspicious_for: ['Planning', 'Meetings'],
+    avoid_today: ['Impulsive decisions'],
+    rahu_kaal: '12:00-13:30',
+    abhijit_muhurta: '12:08-12:56',
+    moon_sign: 'Taurus',
+  };
+}
+
 async function migrate() {
   await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto`);
   await pool.query(`
@@ -556,6 +729,244 @@ app.post('/consultations', async (req, res) => {
     consultation_id: consultation.consultation_id,
     status: mapStatusLabel(consultation.status),
     received_at: consultation.received_at,
+  });
+});
+
+app.get('/geocode', async (req, res) => {
+  const place = req.query.place;
+  if (!place) return res.status(400).json({ error: 'place query is required' });
+  const result = await geocodePlace(place);
+  if (!result) return res.status(404).json({ error: 'Place not found' });
+  res.json(result);
+});
+
+app.post('/consultations/create-and-compute', async (req, res) => {
+  const body = req.body || {};
+  if (!body.name || !body.email || !body.dob || !body.tob || !body.pob) {
+    return res.status(400).json({ error: 'name, email, dob, tob, pob are required' });
+  }
+
+  const concerns = Array.isArray(body.concerns) && body.concerns.length
+    ? body.concerns.map((c) => toTitle(c))
+    : ['Career', 'Finance', 'Health', 'Relations', 'Muhurta'];
+
+  const now = new Date();
+  const seq = Math.floor(Math.random() * 900) + 100;
+  const consultationId = `ASTRO-${now.getFullYear()}-${seq}`;
+
+  let latitude = Number(body.latitude);
+  let longitude = Number(body.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    const g = await geocodePlace(body.pob);
+    latitude = g?.latitude ?? 0;
+    longitude = g?.longitude ?? 0;
+  }
+
+  const chartSeed = Number(String(body.dob).replace(/[^0-9]/g, '').slice(-4) || 0);
+  const lagna = estimateLagnaFromDate(body.dob);
+  const chartData = {
+    lagna,
+    house_placements: buildHousePlacements(chartSeed),
+    active_mahadasha: ['Saturn', 'Jupiter', 'Rahu', 'Mercury', 'Venus'][chartSeed % 5],
+    active_antardasha: ['Mercury', 'Venus', 'Moon', 'Sun', 'Mars'][chartSeed % 5],
+    dasha_ends: `${['Jan', 'Mar', 'Jun', 'Sep', 'Dec'][chartSeed % 5]} ${now.getFullYear() + 2}`,
+    yogas: ['Raj Yoga'],
+    doshas: ['Mangal Dosha'],
+  };
+
+  const cRes = await pool.query(
+    `INSERT INTO consultations (consultation_id, client_name, client_email, concerns, status, received_at, report_ready)
+     VALUES ($1,$2,$3,$4,'PROCESSING',NOW(),FALSE) RETURNING *`,
+    [consultationId, body.name, body.email, JSON.stringify(concerns)]
+  );
+  const consultation = cRes.rows[0];
+
+  await pool.query(
+    `INSERT INTO birth_details (consultation_ref, dob, tob, pob, coordinates, timezone, ayanamsa, lagna)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [
+      consultation.id,
+      body.dob,
+      body.tob,
+      body.pob,
+      `${latitude.toFixed(4)}°N ${longitude.toFixed(4)}°E`,
+      body.timezone || 'UTC',
+      'Lahiri',
+      lagna,
+    ]
+  );
+  await pool.query(
+    `INSERT INTO charts (consultation_ref, house_placements, active_mahadasha, active_antardasha, dasha_ends, yogas, doshas)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [
+      consultation.id,
+      JSON.stringify(chartData.house_placements),
+      chartData.active_mahadasha,
+      chartData.active_antardasha,
+      chartData.dasha_ends,
+      JSON.stringify(chartData.yogas),
+      JSON.stringify(chartData.doshas),
+    ]
+  );
+
+  await emitEvent(consultationId, 'consultation_created', 'Consultation created');
+  await emitEvent(consultationId, 'status_change', 'Status updated to PROCESSING', { new_status: 'PROCESSING' });
+
+  const interpretationRows = [];
+  for (const concern of ['Career', 'Finance', 'Health', 'Relations', 'Muhurta']) {
+    const generated = await generateInterpretationWithKimi({
+      concern,
+      chartData,
+      client: { name: body.name },
+    });
+    const flagged = generated.confidence_score < 0.5;
+    const q = await pool.query(
+      `INSERT INTO interpretations
+       (consultation_ref, concern, insight, remedy, confidence_score, planet_indicator, flagged, flag_reason, hil_status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       RETURNING *`,
+      [
+        consultation.id,
+        concern.toLowerCase(),
+        generated.insight,
+        generated.remedy,
+        generated.confidence_score,
+        generated.planet_indicator,
+        flagged,
+        flagged ? 'Low confidence interpretation requires review' : null,
+        flagged ? 'pending' : 'approved',
+      ]
+    );
+    interpretationRows.push(q.rows[0]);
+  }
+
+  await emitEvent(consultationId, 'interpretation_added', 'Interpretations generated');
+
+  const start = new Date();
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const iso = d.toISOString().slice(0, 10);
+    const payload = buildDailyRecord(iso, 'Steady progress with disciplined effort.', concerns[0] || 'Career');
+    await pool.query(
+      `INSERT INTO jataka_daily (consultation_ref, report_date, data) VALUES ($1,$2,$3)`,
+      [consultation.id, iso, JSON.stringify(payload)]
+    );
+  }
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i * 7);
+    const weekStart = d.toISOString().slice(0, 10);
+    await pool.query(
+      `INSERT INTO jataka_weekly (consultation_ref, week_start, data) VALUES ($1,$2,$3)`,
+      [
+        consultation.id,
+        weekStart,
+        JSON.stringify({
+          overall_tone: i % 3 === 0 ? 'Favourable' : 'Mixed',
+          key_transit: 'Moon-Jupiter angle supports measured action.',
+          dasha_insight: `${chartData.active_mahadasha}-${chartData.active_antardasha} supports consistency.`,
+          career: 'Incremental growth week.',
+          finance: 'Budget discipline favored.',
+          health: 'Maintain routine.',
+          relations: 'Clear communication helps.',
+          best_days: ['Wednesday', 'Thursday'],
+          avoid_days: ['Saturday'],
+          muhurta: 'Thursday morning is favorable.',
+          week_end: new Date(d.getTime() + 6 * 86400000).toISOString().slice(0, 10),
+        }),
+      ]
+    );
+  }
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(start);
+    d.setMonth(start.getMonth() + i);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    await pool.query(
+      `INSERT INTO jataka_monthly (consultation_ref, month_key, data) VALUES ($1,$2,$3)`,
+      [
+        consultation.id,
+        monthKey,
+        JSON.stringify({
+          overall_tone: i % 2 === 0 ? 'Favourable' : 'Mixed',
+          major_transit: 'Saturn transit emphasizes discipline and long-term structure.',
+          dasha_insight: `${chartData.active_mahadasha}-${chartData.active_antardasha} period continues.`,
+          career: 'Skill-building and consistency bring outcomes.',
+          finance: 'Prioritize savings and low-risk allocations.',
+          health: 'Protect sleep quality and digestion.',
+          relations: 'Listen before reacting.',
+          key_dates: [{ date: `${monthKey}-15`, note: 'Good for important decisions.' }],
+          muhurta: 'First half of Thursdays is favorable.',
+          remedy: 'Offer gratitude prayer on Thursdays and maintain satvik routine.',
+          forecast: 'Balanced month with gradual growth.',
+        }),
+      ]
+    );
+  }
+  for (let i = 0; i < 5; i++) {
+    const y = String(start.getFullYear() + i);
+    await pool.query(
+      `INSERT INTO jataka_yearly (consultation_ref, year_key, data) VALUES ($1,$2,$3)`,
+      [consultation.id, y, JSON.stringify({ forecast: 'Long-term focus and disciplined execution bring results.' })]
+    );
+  }
+
+  const reportContent = {
+    id: consultationId,
+    name: body.name,
+    email: body.email,
+    receivedAt: consultation.received_at,
+    dob: body.dob,
+    tob: body.tob,
+    pob: body.pob,
+    coordinates: `${latitude.toFixed(4)}°N ${longitude.toFixed(4)}°E`,
+    timezone: body.timezone || 'UTC',
+    ayanamsa: 'Lahiri',
+    lagna,
+    rasiChart: chartData.house_placements,
+    activeMahadasha: chartData.active_mahadasha,
+    activeAntardasha: chartData.active_antardasha,
+    dashaEnds: chartData.dasha_ends,
+    yogas: chartData.yogas,
+    doshas: chartData.doshas,
+    concerns,
+    interpretations: Object.fromEntries(
+      interpretationRows.map((it) => [
+        it.concern,
+        {
+          insight: it.insight,
+          confidence: Math.round(Number(it.confidence_score) * 100),
+          confidence_score: Number(it.confidence_score),
+          remedy: it.remedy,
+          planet: it.planet_indicator,
+          flagged: it.flagged,
+          flagReason: it.flag_reason,
+        },
+      ])
+    ),
+    remedy: interpretationRows.find((x) => x.flagged)?.remedy || interpretationRows[0]?.remedy || '',
+  };
+
+  await pool.query(
+    `INSERT INTO reports (consultation_ref, content_json, generated_at, delivery_status, pdf_url)
+     VALUES ($1,$2,NOW(),'pending',$3)
+     ON CONFLICT (consultation_ref)
+     DO UPDATE SET content_json = EXCLUDED.content_json, generated_at = NOW(), updated_at = NOW()`,
+    [consultation.id, JSON.stringify(reportContent), `/consultations/${consultationId}/report.pdf`]
+  );
+
+  const finalStatus = interpretationRows.some((x) => x.flagged) ? 'HIL_PENDING' : 'COMPLETE';
+  await pool.query(
+    `UPDATE consultations SET status=$1, report_ready=TRUE, processing_time=$2, updated_at=NOW(), completed_at=NOW() WHERE id=$3`,
+    [finalStatus, '00:00:25', consultation.id]
+  );
+  await emitEvent(consultationId, 'status_change', `Status updated to ${finalStatus}`, { new_status: finalStatus });
+  await emitEvent(consultationId, 'report_ready', 'Report generated');
+
+  res.status(201).json({
+    consultation_id: consultationId,
+    status: finalStatus,
+    concerns,
   });
 });
 

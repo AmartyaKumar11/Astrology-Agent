@@ -14,7 +14,7 @@ import { ICheck, ICircleUser, IDoc, IFlag, IShield, ITerminal } from '../compone
 import KundliChart from '../components/KundliChart.jsx';
 import JatakaReportsSection from '../components/JatakaReportsSection.jsx';
 import { consultationService } from '../services/consultationService.js';
-import { formatPlanetHindiEnglish, formatSignHindiEnglish } from '../utils/astrologyTerms.js';
+import { ensureSignHasSymbol, formatPlanetHindiEnglish, formatSignHindiEnglish } from '../utils/astrologyTerms.js';
 import {
   listContainer,
   listItem,
@@ -62,7 +62,7 @@ export default function Consultation() {
           timezone: res.birth_data?.timezone || prev.timezone,
           ayanamsa: res.birth_data?.ayanamsa || prev.ayanamsa,
           lagna: res.birth_data?.lagna || prev.lagna,
-          lagnaDisplay: res.chart?.lagna_display || formatSignHindiEnglish(res.birth_data?.lagna || prev.lagna),
+          lagnaDisplay: formatSignHindiEnglish(res.birth_data?.lagna || prev.lagna),
           rasiChart: mapHousePlacements(res.chart?.house_placements) || prev.rasiChart,
           activeMahadasha: res.chart?.active_mahadasha || prev.activeMahadasha,
           activeAntardasha: res.chart?.active_antardasha || prev.activeAntardasha,
@@ -157,6 +157,8 @@ export default function Consultation() {
       </motion.div>
     );
   }
+
+  const lagnaDisplayValue = ensureSignHasSymbol(c?.lagnaDisplay || c?.lagna);
 
   return (
     <motion.div {...pageTransition} style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 60 }}>
@@ -308,7 +310,7 @@ export default function Consultation() {
               <Fact label="TOB" v={c.tob} />
               <Fact label="POB" v={c.pob} />
               <Fact label="Ayanamsa" v={c.ayanamsa} />
-              <Fact label="Lagna" v={c.lagnaDisplay || c.lagna} accent />
+              <Fact label="Lagna" v={lagnaDisplayValue} accent />
             </div>
           </Card>
 
@@ -317,7 +319,7 @@ export default function Consultation() {
               <Card style={{ padding: 16 }}>
                 <Section title="Rasi Chart" />
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-                  <KundliChart chart={c.rasiChart} size={320} lagnaSign={c.lagnaDisplay || c.lagna} />
+                  <KundliChart chart={c.rasiChart} size={320} lagnaSign={lagnaDisplayValue} />
                 </div>
                 <div
                   style={{

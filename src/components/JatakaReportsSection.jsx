@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { JATAKA_REPORTS } from '../data.js';
 import { Card } from './primitives.jsx';
 import { IArrowLeft, IArrowRight } from './icons.jsx';
+import { jatakaService } from '../services/jatakaService.js';
 
 const COLOUR_MAP = {
   White: '#FFFFFF',
@@ -67,9 +68,153 @@ function toneToBadge(tone) {
   return { bg: 'var(--rose-50)', fg: 'var(--rose-700)', dot: 'var(--rose)' };
 }
 
+function normalizeDateOnly(input) {
+  if (!input) return '';
+  const s = String(input);
+  return s.includes('T') ? s.slice(0, 10) : s;
+}
+
+function toArray(v) {
+  if (Array.isArray(v)) return v;
+  if (!v) return [];
+  return [v];
+}
+
+function mapDailyEntry(d) {
+  const luckyNumber =
+    d.lucky_number ??
+    d.luckyNumber ??
+    (Array.isArray(d.lucky_numbers) && d.lucky_numbers.length ? d.lucky_numbers[0] : '—');
+  return {
+    date: normalizeDateOnly(d.date),
+    panchang: {
+      tithi: d.tithi || '—',
+      nakshatra: d.nakshatra || '—',
+      yoga: d.yoga || '—',
+      vara: d.vara || '—',
+    },
+    rahuKaal: d.rahu_kaal || d.rahuKaal || '—',
+    abhijitMuhurta: d.abhijit_muhurta || d.abhijitMuhurta || '—',
+    moonSign: d.moon_sign || d.moonSign || '—',
+    dashaInsight: d.dasha_insight || d.dashaInsight || d.forecast || '—',
+    transitAlert: d.transit_alert || d.transitAlert || d.forecast || '—',
+    careerTip: d.career_tip || d.careerTip || d.forecast || '—',
+    financeTip: d.finance_tip || d.financeTip || d.forecast || '—',
+    healthTip: d.health_tip || d.healthTip || d.forecast || '—',
+    luckyColour: d.lucky_colour || d.luckyColour || 'Indigo',
+    luckyNumber,
+    luckyDirection: d.lucky_direction || d.luckyDirection || '—',
+    auspiciousFor: toArray(d.auspicious_for || d.auspiciousFor || []),
+    avoidToday: toArray(d.avoid_today || d.avoidToday || []),
+  };
+}
+
+function mapWeeklyEntry(w) {
+  const weekStart = normalizeDateOnly(w.week_start || w.weekStart);
+  const weekEnd = normalizeDateOnly(w.week_end || w.weekEnd || weekStart);
+  return {
+    weekStart,
+    weekEnd,
+    overallTone: w.overall_tone || w.overallTone || 'Mixed',
+    keyTransit: w.key_transit || w.keyTransit || w.forecast || '—',
+    dashaInsight: w.dasha_insight || w.dashaInsight || w.forecast || '—',
+    career: w.career || w.forecast || '—',
+    finance: w.finance || w.forecast || '—',
+    health: w.health || w.forecast || '—',
+    relations: w.relations || w.forecast || '—',
+    bestDays: toArray(w.best_days || w.bestDays || []),
+    avoidDays: toArray(w.avoid_days || w.avoidDays || []),
+    muhurta: w.muhurta || w.forecast || '—',
+  };
+}
+
+function mapMonthlyEntry(m) {
+  return {
+    month: m.month || '—',
+    overallTone: m.overall_tone || m.overallTone || 'Mixed',
+    majorTransit: m.major_transit || m.majorTransit || m.forecast || '—',
+    dashaInsight: m.dasha_insight || m.dashaInsight || m.forecast || '—',
+    career: m.career || m.forecast || '—',
+    finance: m.finance || m.forecast || '—',
+    health: m.health || m.forecast || '—',
+    relations: m.relations || m.forecast || '—',
+    keyDates: Array.isArray(m.key_dates)
+      ? m.key_dates
+      : Array.isArray(m.keyDates)
+        ? m.keyDates
+        : [],
+    muhurta: m.muhurta || m.forecast || '—',
+    remedy: m.remedy || '—',
+  };
+}
+
 export default function JatakaReportsSection({ c }) {
-  const reports = JATAKA_REPORTS[c.id] || { daily: [], weekly: [], monthly: [] };
+  const fallbackReports = JATAKA_REPORTS[c.id] || { daily: [], weekly: [], monthly: [] };
   const [view, setView] = useState('daily');
+  const [apiLoaded, setApiLoaded] = useState(false);
+  const [apiReports, setApiReports] = useState({ daily: [], weekly: [], monthly: [] });
+
+  const initialMonth = new Date();
+  const [viewedYear, setViewedYear] = useState(initialMonth.getFullYear());
+  const [viewedMonth, setViewedMonth] = useState(initialMonth.getMonth());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedWeek, setSelectedWeek] = useState(0);
+  const [selectedMonthIdx, setSelectedMonthIdx] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    setApiLoaded(false);
+    Promise.allSettled([
+      jatakaService.getWeekly(c.id),
+      jatakaService.getMonthly(c.id),
+    ]).then(([weeklyRes, monthlyRes]) => {
+      if (!mounted) return;
+      const weekly =
+        weeklyRes.status === 'fulfilled' && Array.isArray(weeklyRes.value?.data)
+          ? weeklyRes.value.data.map(mapWeeklyEntry)
+          : [];
+      const monthly =
+        monthlyRes.status === 'fulfilled' && Array.isArray(monthlyRes.value?.data)
+          ? monthlyRes.value.data.map(mapMonthlyEntry)
+          : [];
+      setApiReports((prev) => ({ ...prev, weekly, monthly }));
+      setApiLoaded(true);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [c.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    const monthKey = `${viewedYear}-${String(viewedMonth + 1).padStart(2, '0')}`;
+    jatakaService
+      .getDaily(c.id, monthKey)
+      .then((res) => {
+        if (!mounted) return;
+        const daily = Array.isArray(res?.data) ? res.data.map(mapDailyEntry) : [];
+        setApiReports((prev) => ({ ...prev, daily }));
+        if (!selectedDate && daily.length) {
+          setSelectedDate(daily[daily.length - 1].date);
+        }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setApiReports((prev) => ({ ...prev, daily: [] }));
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [c.id, viewedYear, viewedMonth]);
+
+  const reports = useMemo(() => {
+    if (!apiLoaded) return fallbackReports;
+    return {
+      daily: apiReports.daily,
+      weekly: apiReports.weekly,
+      monthly: apiReports.monthly,
+    };
+  }, [apiLoaded, apiReports, fallbackReports]);
 
   const sortedDaily = useMemo(
     () => [...reports.daily].sort((a, b) => a.date.localeCompare(b.date)),
@@ -88,20 +233,6 @@ export default function JatakaReportsSection({ c }) {
   const dailyByDate = useMemo(
     () => Object.fromEntries(sortedDaily.map((d) => [d.date, d])),
     [sortedDaily]
-  );
-
-  const initialMonth = sortedDaily.length
-    ? parseISO(sortedDaily[sortedDaily.length - 1].date)
-    : new Date();
-  const [viewedYear, setViewedYear] = useState(initialMonth.getFullYear());
-  const [viewedMonth, setViewedMonth] = useState(initialMonth.getMonth());
-  const [selectedDate, setSelectedDate] = useState(null);
-
-  const [selectedWeek, setSelectedWeek] = useState(
-    sortedWeekly.length ? sortedWeekly.length - 1 : 0
-  );
-  const [selectedMonthIdx, setSelectedMonthIdx] = useState(
-    sortedMonthly.length ? sortedMonthly.length - 1 : 0
   );
 
   useEffect(() => {

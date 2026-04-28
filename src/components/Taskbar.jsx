@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MOCK_DATA } from '../data.js';
-import { IBattery, IGrid, IShield, IWifi, StartLogo } from './icons.jsx';
+import { IBattery, IDoc, IShield, IWifi, ISparkle, StartLogo } from './icons.jsx';
 
 export default function Taskbar() {
   const nav = useNavigate();
@@ -19,11 +19,12 @@ export default function Taskbar() {
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   const isHome = pathname === '/';
-  const isQueue =
-    pathname.startsWith('/queue') ||
+  const isConsultation =
     pathname.startsWith('/consultation') ||
     pathname.startsWith('/report');
   const isHil = pathname.startsWith('/hil');
+  const isReports = pathname.startsWith('/reports');
+  const isIntake = pathname.startsWith('/intake');
 
   return (
     <div
@@ -46,16 +47,36 @@ export default function Taskbar() {
       }}
     >
       <div style={{ width: 120 }} />
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
-        <TaskbarBtn onClick={() => nav('/')} active={isHome} title="Desktop">
-          <StartLogo size={20} />
-        </TaskbarBtn>
-        <TaskbarBtn onClick={() => nav('/queue')} active={isQueue} title="Consultation Queue">
-          <IGrid size={18} />
-        </TaskbarBtn>
-        <TaskbarBtn onClick={() => nav('/hil')} active={isHil} badge={hilPending} title="Drishti Board">
-          <IShield size={18} />
-        </TaskbarBtn>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(255,255,255,0.7)',
+            border: '1px solid rgba(255,255,255,0.6)',
+            borderRadius: 14,
+            padding: '6px 10px',
+          }}
+        >
+          <TaskbarBtn onClick={() => nav('/')} active={isHome} title="Desktop">
+            <StartLogo size={20} />
+          </TaskbarBtn>
+          <TaskbarBtn onClick={() => nav('/intake')} active={isIntake} title="New Consultation">
+            <ISparkle size={18} />
+          </TaskbarBtn>
+          <TaskbarBtn
+            onClick={() => nav('/hil')}
+            active={isHil || isConsultation}
+            badge={hilPending}
+            title="Drishti Board"
+          >
+            <IShield size={18} />
+          </TaskbarBtn>
+          <TaskbarBtn onClick={() => nav('/reports')} active={isReports} title="Reports">
+            <IDoc size={18} />
+          </TaskbarBtn>
+        </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingRight: 8, color: 'var(--text)' }}>
         <div
